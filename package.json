@@ -1,0 +1,22 @@
+{
+  "name": "quiniela-backend",
+  "version": "1.0.0",
+  "description": "Backend de la quiniela del Mundial 2026 (quiniela-mageova)",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "seed": "node src/seed.js",
+    "reset": "node src/seed.js --reset"
+  },
+  "keywords": ["mundial", "2026", "quiniela", "express", "postgres"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "pg": "^8.13.1"
+  }
+}

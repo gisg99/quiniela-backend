@@ -179,9 +179,10 @@ export async function buildQuinielaStandings() {
   ]);
   const teamScores = buildTeamScores(teams, groupMatches, knockoutMatches);
 
-  const { rows: parts } = await query('SELECT * FROM participants ORDER BY name');
+  const QID = Number(process.env.QUINIELA_ID || 1);
+  const { rows: parts } = await query('SELECT * FROM participants WHERE quiniela_id = $1 ORDER BY name', [QID]);
   const { rows: assigns } = await query(
-    `SELECT pt.participant_id, pt.team_id FROM participant_teams pt`
+    `SELECT pt.participant_id, pt.team_id FROM participant_teams pt WHERE pt.quiniela_id = $1`, [QID]
   );
   const teamsByPart = {};
   for (const a of assigns) (teamsByPart[a.participant_id] ??= []).push(a.team_id);

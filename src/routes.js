@@ -11,6 +11,9 @@ import { recomputeKnockoutSlots } from './propagate.js';
 
 const router = Router();
 
+// ID de quiniela que sirve esta instancia del backend (configurable por env).
+const QID = Number(process.env.QUINIELA_ID || 1);
+
 // --- Middleware de admin (solo para escribir resultados) ---
 function requireAdmin(req, res, next) {
   const pass = process.env.ADMIN_PASSWORD;
@@ -47,7 +50,7 @@ router.post('/admin/login', (req, res) => {
 // =====================================================================
 router.get('/teams', asyncH(async (req, res) => {
   const teams = await getTeams();
-  const { rows: assigns } = await query('SELECT participant_id, team_id FROM participant_teams');
+  const { rows: assigns } = await query('SELECT participant_id, team_id FROM participant_teams WHERE quiniela_id = $1', [QID]);
   const ownerByTeam = {};
   for (const a of assigns) ownerByTeam[a.team_id] = a.participant_id;
   res.json(teams.map((t) => ({ ...t, owner_id: ownerByTeam[t.id] || null })));
@@ -57,10 +60,11 @@ router.get('/teams', asyncH(async (req, res) => {
 //  Participantes
 // =====================================================================
 router.get('/participants', asyncH(async (req, res) => {
-  const { rows: parts } = await query('SELECT * FROM participants ORDER BY name');
+  const { rows: parts } = await query('SELECT * FROM participants WHERE quiniela_id = $1 ORDER BY name', [QID]);
   const { rows: assigns } = await query(
     `SELECT pt.participant_id, pt.team_id, t.name, t.bombo, t.grupo
-       FROM participant_teams pt JOIN teams t ON t.id = pt.team_id`
+       FROM participant_teams pt JOIN teams t ON t.id = pt.team_id
+      WHERE pt.quiniela_id = $1`, [QID]
   );
   const byPart = {};
   for (const a of assigns) (byPart[a.participant_id] ??= []).push(a);
@@ -74,8 +78,8 @@ router.post('/participants', asyncH(async (req, res) => {
   const { name, color } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   const { rows } = await query(
-    'INSERT INTO participants (name, color) VALUES ($1, $2) RETURNING *',
-    [name.trim(), color || '#3b82f6']
+    'INSERT INTO participants (name, color, quiniela_id) VALUES ($1, $2, $3) RETURNING *',
+    [name.trim(), color || '#3b82f6', QID]
   );
   res.status(201).json(rows[0]);
 }));
@@ -85,15 +89,15 @@ router.put('/participants/:id', asyncH(async (req, res) => {
   const { rows } = await query(
     `UPDATE participants
         SET name = COALESCE($1, name), color = COALESCE($2, color)
-      WHERE id = $3 RETURNING *`,
-    [name ?? null, color ?? null, req.params.id]
+      WHERE id = $3 AND quiniela_id = $4 RETURNING *`,
+    [name ?? null, color ?? null, req.params.id, QID]
   );
   if (!rows.length) return res.status(404).json({ error: 'Participante no encontrado' });
   res.json(rows[0]);
 }));
 
 router.delete('/participants/:id', asyncH(async (req, res) => {
-  await query('DELETE FROM participants WHERE id = $1', [req.params.id]);
+  await query('DELETE FROM participants WHERE id = $1 AND quiniela_id = $2', [req.params.id, QID]);
   res.json({ ok: true });
 }));
 
@@ -103,7 +107,7 @@ router.put('/participants/:id/teams', asyncH(async (req, res) => {
   const participantId = Number(req.params.id);
   const teamIds = Array.isArray(req.body?.team_ids) ? req.body.team_ids.map(Number) : [];
 
-  const part = await query('SELECT id FROM participants WHERE id=$1', [participantId]);
+  const part = await query('SELECT id FROM participants WHERE id=$1 AND quiniela_id=$2', [participantId, QID]);
   if (!part.rows.length) return res.status(404).json({ error: 'Participante no encontrado' });
 
   if (teamIds.length) {
@@ -120,11 +124,11 @@ router.put('/participants/:id/teams', asyncH(async (req, res) => {
     if (bombos.length > 4) {
       return res.status(400).json({ error: 'Máximo 4 equipos por participante' });
     }
-    // ¿Tomado por otro participante?
+    // ¿Tomado por otro participante en la misma quiniela?
     const { rows: taken } = await query(
       `SELECT team_id FROM participant_teams
-        WHERE team_id = ANY($1) AND participant_id <> $2`,
-      [teamIds, participantId]
+        WHERE team_id = ANY($1) AND quiniela_id = $2 AND participant_id <> $3`,
+      [teamIds, QID, participantId]
     );
     if (taken.length) {
       return res.status(409).json({
@@ -134,11 +138,11 @@ router.put('/participants/:id/teams', asyncH(async (req, res) => {
     }
   }
 
-  await query('DELETE FROM participant_teams WHERE participant_id = $1', [participantId]);
+  await query('DELETE FROM participant_teams WHERE participant_id = $1 AND quiniela_id = $2', [participantId, QID]);
   for (const tid of teamIds) {
     await query(
-      'INSERT INTO participant_teams (participant_id, team_id) VALUES ($1,$2)',
-      [participantId, tid]
+      'INSERT INTO participant_teams (participant_id, team_id, quiniela_id) VALUES ($1,$2,$3)',
+      [participantId, tid, QID]
     );
   }
   res.json({ ok: true, team_ids: teamIds });
@@ -150,7 +154,7 @@ router.put('/participants/:id/teams', asyncH(async (req, res) => {
 router.get('/groups', asyncH(async (req, res) => {
   const [teams, groupMatches] = await Promise.all([getTeams(), getGroupMatches()]);
   const standings = buildGroupStandings(teams, groupMatches);
-  const { rows: assigns } = await query('SELECT participant_id, team_id FROM participant_teams');
+  const { rows: assigns } = await query('SELECT participant_id, team_id FROM participant_teams WHERE quiniela_id = $1', [QID]);
   const ownerByTeam = {};
   for (const a of assigns) ownerByTeam[a.team_id] = a.participant_id;
 
@@ -197,7 +201,7 @@ router.get('/knockout', asyncH(async (req, res) => {
   const matches = await getKnockoutMatches();
   const { rows: tnames } = await query('SELECT id, name FROM teams');
   const nameById = Object.fromEntries(tnames.map((t) => [t.id, t.name]));
-  const { rows: assigns } = await query('SELECT participant_id, team_id FROM participant_teams');
+  const { rows: assigns } = await query('SELECT participant_id, team_id FROM participant_teams WHERE quiniela_id = $1', [QID]);
   const ownerByTeam = {};
   for (const a of assigns) ownerByTeam[a.team_id] = a.participant_id;
 
@@ -266,7 +270,7 @@ router.get('/summary', asyncH(async (req, res) => {
   const teamScores = buildTeamScores(teams, groupMatches, knockoutMatches);
   const nameById = Object.fromEntries(teams.map((t) => [t.id, t.name]));
 
-  const { rows: assigns } = await query('SELECT participant_id, team_id FROM participant_teams');
+  const { rows: assigns } = await query('SELECT participant_id, team_id FROM participant_teams WHERE quiniela_id = $1', [QID]);
   const ownerByTeam = {};
   for (const a of assigns) ownerByTeam[a.team_id] = a.participant_id;
 

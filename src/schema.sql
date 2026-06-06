@@ -11,20 +11,24 @@ CREATE TABLE IF NOT EXISTS teams (
   pos_sorteo  INTEGER NOT NULL         -- 1..4 posición dentro del grupo en el sorteo
 );
 
--- Participantes (las 12 personas). Se crean desde la app (Ajustes).
+-- Participantes (las personas de cada quiniela). Se crean desde la app (Ajustes).
+-- quiniela_id distingue a qué instancia pertenece cada participante.
 CREATE TABLE IF NOT EXISTS participants (
-  id     SERIAL PRIMARY KEY,
-  name   TEXT NOT NULL,
-  color  TEXT NOT NULL DEFAULT '#3b82f6',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  id          SERIAL PRIMARY KEY,
+  name        TEXT NOT NULL,
+  color       TEXT NOT NULL DEFAULT '#3b82f6',
+  quiniela_id INTEGER NOT NULL DEFAULT 1,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Asignación de equipos a participantes (1 por bombo => 4 por persona).
--- Un equipo pertenece a un solo participante (UNIQUE en team_id).
+-- Un equipo puede asignarse en distintas quinielas, pero solo una vez por quiniela.
 CREATE TABLE IF NOT EXISTS participant_teams (
   participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
-  team_id        INTEGER NOT NULL UNIQUE REFERENCES teams(id) ON DELETE CASCADE,
-  PRIMARY KEY (participant_id, team_id)
+  team_id        INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  quiniela_id    INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (participant_id, team_id),
+  UNIQUE (team_id, quiniela_id)
 );
 
 -- Partidos de fase de grupos (72).

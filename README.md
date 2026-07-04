@@ -46,6 +46,10 @@ API en **Node.js + Express + PostgreSQL** para la quiniela del Mundial 2026.
 | `PORT` | Puerto del API (4000 por defecto). |
 | `ADMIN_PASSWORD` | Contraseña para capturar resultados. Si está vacía, modo abierto. |
 | `PRIZE_TOTAL` | Premio total a repartir (6000 por defecto). |
+| `SYNC_PROVIDER` | Fuente de datos: `openfootball` (por defecto, gratis) o `apifootball`. |
+| `OPENFOOTBALL_URL` | (Opcional) URL del JSON de openfootball. Trae un valor por defecto. |
+| `APIFOOTBALL_KEY` / `APIFOOTBALL_LEAGUE` / `APIFOOTBALL_SEASON` | Solo si usas `apifootball` (requiere plan de pago para season 2026). |
+| `SYNC_CRON_TOKEN` | Token para que un Cron Job llame a `POST /api/sync` sin la contraseña de admin. |
 
 ## Modelo de puntos (no acumulativo)
 
@@ -81,6 +85,46 @@ El premio se reparte proporcional a los puntos de cada participante.
 | PUT | `/api/knockout/:id` 🔒 | Capturar marcador / fijar terceros. |
 
 🔒 = requiere cabecera `x-admin-password` si `ADMIN_PASSWORD` está configurada.
+
+## Resultados automáticos (openfootball)
+
+En vez de teclear cada marcador, el backend los baja de
+[**openfootball/worldcup.json**](https://github.com/openfootball/worldcup.json):
+datos de dominio público del Mundial 2026 (grupos, cruces y resultados),
+**gratis y sin API key**. Se actualiza por commits, así que puede haber algo
+de retraso tras cada partido (aceptable para una quiniela).
+
+> Alternativa de pago: pon `SYNC_PROVIDER=apifootball` + `APIFOOTBALL_KEY` si
+> quieres datos más "en vivo" (requiere plan de pago; el gratis no cubre 2026).
+
+**Verificación (recomendada):** `npm run probe` comprueba que la fuente
+responde, cuántos partidos hay y que los nombres de equipo casan con
+`src/teamNames.js` (si alguno sale "sin casar" y no es un placeholder tipo
+`W89`/`L101`, se añade su alias ahí).
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/sync/status` | ¿Hay API key configurada? |
+| GET | `/api/sync/preview` 🔒 | Diff de grupos/cruces vs. la API (**no escribe**). |
+| POST | `/api/sync` 🔒/🔑 | Baja **marcadores** (grupos + eliminatorias). Idempotente. |
+| POST | `/api/sync/structure` 🔒 | Corrige **grupos y cruces** con los datos reales y luego baja marcadores. |
+
+🔑 = `POST /api/sync` acepta además la cabecera `x-sync-token: <SYNC_CRON_TOKEN>`.
+
+**Flujo recomendado:**
+1. La primera vez (o si los cruces están mal), pulsa **Admin → “Corregir grupos
+   y cruces”** (llama a `/api/sync/structure`). Reubica equipos y reconstruye los
+   72 partidos de grupos con los datos reales. **No borra equipos ni asignaciones
+   de participantes.**
+2. A partir de ahí, **“Actualizar marcadores”** (o el cron) mantiene los resultados
+   al día. El bracket y los puntos se recalculan solos.
+
+**Cron automático en Render (cada 15 min):**
+Crea un *Cron Job* con schedule `*/15 * * * *` y comando:
+```bash
+curl -fsS -X POST https://TU-BACKEND.onrender.com/api/sync -H "x-sync-token: $SYNC_CRON_TOKEN"
+```
+(define `SYNC_CRON_TOKEN` con el mismo valor en el backend y en el cron).
 
 ## Notas del bracket
 

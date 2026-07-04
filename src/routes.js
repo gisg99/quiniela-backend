@@ -8,6 +8,7 @@ import {
   buildGroupStandings, buildTeamScores, buildQuinielaStandings,
 } from './scoring.js';
 import { recomputeKnockoutSlots } from './propagate.js';
+import { isConfigured, syncScores, previewStructure, applyStructure } from './sync.js';
 
 const router = Router();
 
@@ -251,6 +252,40 @@ router.put('/knockout/:id', requireAdmin, asyncH(async (req, res) => {
 router.post('/knockout/recompute', requireAdmin, asyncH(async (req, res) => {
   const n = await recomputeKnockoutSlots();
   res.json({ ok: true, updated: n });
+}));
+
+// =====================================================================
+//  Sincronización con API-Football
+//    GET  /sync/status     -> ¿hay API key configurada?
+//    GET  /sync/preview    -> diff de grupos/cruces (solo lectura)
+//    POST /sync            -> baja marcadores (grupos + KO). Cron + botón.
+//    POST /sync/structure  -> corrige grupos/cruces y luego marcadores.
+// =====================================================================
+
+// Auth para /sync: acepta la contraseña de admin O un token de cron
+// (para que un Cron Job de Render pueda llamarlo sin la contraseña).
+function requireSyncAuth(req, res, next) {
+  const token = process.env.SYNC_CRON_TOKEN;
+  if (token && req.get('x-sync-token') === token) return next();
+  return requireAdmin(req, res, next);
+}
+
+router.get('/sync/status', (req, res) => {
+  res.json({ configured: isConfigured() });
+});
+
+router.get('/sync/preview', requireAdmin, asyncH(async (req, res) => {
+  res.json(await previewStructure());
+}));
+
+router.post('/sync', requireSyncAuth, asyncH(async (req, res) => {
+  const result = await syncScores();
+  await recomputeKnockoutSlots();
+  res.json(result);
+}));
+
+router.post('/sync/structure', requireAdmin, asyncH(async (req, res) => {
+  res.json(await applyStructure());
 }));
 
 // =====================================================================

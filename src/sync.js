@@ -87,7 +87,7 @@ async function fetchOpenfootball() {
   }
   const jornadaOf = new Map();
   for (const [, ms] of buckets) {
-    [...ms].map((m) => ({ m, date: m.date, time: ofTime(m.time) }))
+    [...ms].map((m) => ({ m, ...toDisplayTZ(m.date, m.time) }))
       .sort(byDateTime)
       .forEach((x, i) => jornadaOf.set(x.m, Math.floor(i / 2) + 1));
   }
@@ -95,18 +95,18 @@ async function fetchOpenfootball() {
   const out = [];
   for (const m of matches) {
     const sc = ofScore(m);
-    const time = ofTime(m.time);
+    const { date, time } = toDisplayTZ(m.date, m.time);
     if (m.group) {
       out.push({
         stage: 'group', grupo: groupLetter(m.group), jornada: jornadaOf.get(m) || null,
-        koRound: null, home: m.team1, away: m.team2, date: m.date, time, ...sc,
+        koRound: null, home: m.team1, away: m.team2, date, time, ...sc,
       });
     } else {
       const koRound = parseKoRound(m.round);
       if (koRound == null) continue;
       out.push({
         stage: 'ko', grupo: null, jornada: null, koRound,
-        home: m.team1, away: m.team2, date: m.date, time, ...sc,
+        home: m.team1, away: m.team2, date, time, ...sc,
       });
     }
   }
@@ -119,6 +119,32 @@ function groupLetter(g) {
 function ofTime(t) {
   const m = /(\d{1,2}:\d{2})/.exec(t || '');
   return m ? m[1] : null;
+}
+
+// Huso horario para MOSTRAR los partidos. openfootball trae cada partido en
+// hora LOCAL de su sede, con desfase UTC variable (UTC-6, UTC-7, UTC-4...).
+// Para que todos los horarios sean consistentes los normalizamos a un solo
+// huso; por defecto Ciudad de México (UTC-6, sin horario de verano).
+// Configurable con la variable de entorno DISPLAY_UTC_OFFSET.
+const DISPLAY_UTC_OFFSET = Number(process.env.DISPLAY_UTC_OFFSET ?? -6);
+
+// "2026-06-30" + "17:00 UTC-4"  ->  { date:'2026-06-30', time:'15:00' } ya en
+// el huso DISPLAY_UTC_OFFSET (ajusta el día si el cambio cruza la medianoche).
+function toDisplayTZ(dateStr, timeRaw) {
+  const tm = /(\d{1,2}):(\d{2})/.exec(timeRaw || '');
+  if (!dateStr || !tm) {
+    return { date: dateStr || null, time: tm ? `${tm[1].padStart(2, '0')}:${tm[2]}` : null };
+  }
+  const offM = /utc\s*([+-]?\d{1,2})/i.exec(timeRaw || '');
+  const srcOff = offM ? Number(offM[1]) : DISPLAY_UTC_OFFSET; // sin sede -> asume destino
+  const totalMin = Number(tm[1]) * 60 + Number(tm[2]) - srcOff * 60 + DISPLAY_UTC_OFFSET * 60;
+  const dayShift = Math.floor(totalMin / 1440);
+  const mins = ((totalMin % 1440) + 1440) % 1440;
+  const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+  const mm = String(mins % 60).padStart(2, '0');
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dayShift);
+  return { date: d.toISOString().slice(0, 10), time: `${hh}:${mm}` };
 }
 // openfootball score: { ft:[a,b], ht:[..], et:[..], p:[..] }
 function ofScore(m) {
@@ -349,15 +375,27 @@ export async function syncScores(fixturesArg) {
   let groupUpdated = 0;
   for (const f of fixtures) {
     if (f.stage !== 'group') continue;
-    if (!f.finished && !f.live) continue;
     const h = resolve(f.home), a = resolve(f.away);
     if (!h || !a) continue;
     const m = byPair.get(pairKey(h.id, a.id));
     if (!m) continue;   // el par no existe localmente (estructura sin corregir)
-    const g1 = m.team_1_id === h.id ? f.homeGoals : f.awayGoals;
-    const g2 = m.team_1_id === h.id ? f.awayGoals : f.homeGoals;
-    await query('UPDATE group_matches SET goles_1=$1, goles_2=$2, played=$3 WHERE id=$4', [g1, g2, f.finished, m.id]);
-    groupUpdated += 1;
+    // Fecha/hora se actualizan SIEMPRE (aunque el partido no se haya jugado);
+    // el marcador solo cuando ya hay resultado o va en vivo.
+    if (f.finished || f.live) {
+      const g1 = m.team_1_id === h.id ? f.homeGoals : f.awayGoals;
+      const g2 = m.team_1_id === h.id ? f.awayGoals : f.homeGoals;
+      await query(
+        `UPDATE group_matches SET goles_1=$1, goles_2=$2, played=$3,
+           fecha=COALESCE($4,fecha), hora=COALESCE($5,hora) WHERE id=$6`,
+        [g1, g2, f.finished, f.date || null, f.time || null, m.id]
+      );
+      groupUpdated += 1;
+    } else {
+      await query(
+        'UPDATE group_matches SET fecha=COALESCE($1,fecha), hora=COALESCE($2,hora) WHERE id=$3',
+        [f.date || null, f.time || null, m.id]
+      );
+    }
   }
 
   await recomputeKnockoutSlots();
@@ -366,8 +404,20 @@ export async function syncScores(fixturesArg) {
 }
 
 // ---------------------------------------------------------------------
-//  Eliminatorias: asigna equipos reales + marcador, ronda a ronda para
-//  que la propagación de ganadores alimente la ronda siguiente.
+//  Eliminatorias: escribe marcador + fecha/hora, ronda a ronda.
+//
+//  CLAVE DEL DISEÑO: los EQUIPOS de cada cruce los posiciona SOLO la
+//  propagación del bracket (recomputeKnockoutSlots), que es determinista:
+//  dieciseisavos salen de la tabla de cada grupo y las rondas siguientes del
+//  ganador/perdedor real de la ronda previa. Aquí NO reposicionamos equipos
+//  (hacerlo por "equipo compartido" metía los partidos en la ranura
+//  equivocada y cruzaba las rondas siguientes). Solo:
+//    - rellenamos el rival "mejor tercero" de dieciseisavos (único slot que
+//      la propagación no puede resolver), anclado al equipo de grupo que ya
+//      puso recompute, así que la posición es correcta;
+//    - escribimos marcador/fecha en la ranura cuya PAREJA coincide.
+//  Procesamos ronda por ronda: al recomputar tras cada una, el ganador real
+//  ya alimenta la ronda siguiente antes de casar sus marcadores.
 // ---------------------------------------------------------------------
 async function syncKnockout(fixtures) {
   const { byLocalName } = await loadTeamIndex();
@@ -381,6 +431,10 @@ async function syncKnockout(fixtures) {
 
   let updated = 0;
   for (const ronda of [1, 2, 3, 4, 'F3', 'Final']) {
+    // Propagamos primero: deja esta ronda con los equipos reales que salen de
+    // los resultados ya escritos de la ronda anterior.
+    await recomputeKnockoutSlots();
+
     const fxs = koByRound.get(ronda);
     if (!fxs || !fxs.length) continue;
 
@@ -390,36 +444,60 @@ async function syncKnockout(fixtures) {
         : ronda === 'Final' ? m.id === 'Final'
           : m.ronda === ronda && m.id !== 'F3' && m.id !== 'Final');
 
+    // Dieciseisavos: rellenar/corregir el "mejor tercero". recompute ya
+    // posicionó el clasificado de grupo (1°/2°) del cruce; anclándonos en él,
+    // el fixture nos dice quién es el rival real y en qué ranura va. Esto
+    // también corrige un tercero mal puesto por una sync anterior.
+    if (ronda === 1) {
+      const isGroupQual = (label) => /^[12]° Grupo [A-L]$/.test(label || '');
+      for (const f of fxs) {
+        const h = resolve(f.home), a = resolve(f.away);
+        if (!h || !a) continue;
+        const pair = [h.id, a.id];
+        for (const m of inRound) {
+          let anchorCol = null;
+          if (isGroupQual(m.slot_1_label) && pair.includes(m.team_1_id)) anchorCol = 1;
+          else if (isGroupQual(m.slot_2_label) && pair.includes(m.team_2_id)) anchorCol = 2;
+          if (!anchorCol) continue;
+          const anchorId = anchorCol === 1 ? m.team_1_id : m.team_2_id;
+          const other = pair.find((x) => x !== anchorId);
+          const thirdCol = anchorCol === 1 ? 'team_2_id' : 'team_1_id';
+          if (m[thirdCol] !== other) {
+            await query(`UPDATE knockout_matches SET ${thirdCol}=$1 WHERE id=$2`, [other, m.id]);
+            m[thirdCol] = other;
+          }
+          break;
+        }
+      }
+    }
+
+    // Marcador + fecha/hora en la ranura de PAREJA EXACTA (ambos equipos).
     for (const f of fxs) {
       const h = resolve(f.home), a = resolve(f.away);
       if (!h || !a) continue;
       const ids = new Set([h.id, a.id]);
-      // 1) Preferimos el slot con la pareja EXACTA (ambos equipos). Así un
-      //    slot que solo comparte un equipo (por una predicción distinta a
-      //    la realidad) no se lleva el marcador de otro cruce.
-      let match = inRound.find((m) => ids.has(m.team_1_id) && ids.has(m.team_2_id));
-      // 2) Si no, un slot que comparta al menos un equipo real.
-      if (!match) match = inRound.find((m) => (m.team_1_id && ids.has(m.team_1_id)) || (m.team_2_id && ids.has(m.team_2_id)));
-      // 3) Si no, un único slot vacío disponible en la ronda.
-      if (!match) {
-        const empties = inRound.filter((m) => !m.team_1_id && !m.team_2_id);
-        if (empties.length === 1) match = empties[0];
-      }
+      const match = inRound.find((m) => ids.has(m.team_1_id) && ids.has(m.team_2_id));
       if (!match) continue;
-
+      const scored = f.finished || f.live;
+      // Orientamos el marcador al orden de equipos del slot (lo fijó recompute).
+      const t1IsHome = match.team_1_id === h.id;
+      const g1 = t1IsHome ? f.homeGoals : f.awayGoals;
+      const g2 = t1IsHome ? f.awayGoals : f.homeGoals;
+      const p1 = t1IsHome ? f.homePen : f.awayPen;
+      const p2 = t1IsHome ? f.awayPen : f.homePen;
       await query(
-        `UPDATE knockout_matches SET team_1_id=$1, team_2_id=$2, goles_1=$3, goles_2=$4, pen_1=$5, pen_2=$6, played=$7 WHERE id=$8`,
+        `UPDATE knockout_matches SET goles_1=$1, goles_2=$2, pen_1=$3, pen_2=$4, played=$5,
+           fecha=COALESCE($6,fecha), hora=COALESCE($7,hora) WHERE id=$8`,
         [
-          h.id, a.id,
-          f.finished || f.live ? f.homeGoals : null,
-          f.finished || f.live ? f.awayGoals : null,
-          f.homePen, f.awayPen, f.finished, match.id,
+          scored ? g1 : null, scored ? g2 : null,
+          scored ? p1 : null, scored ? p2 : null,
+          f.finished, f.date || null, f.time || null, match.id,
         ]
       );
-      match.team_1_id = h.id; match.team_2_id = a.id;   // no reusar en la misma ronda
       updated += 1;
     }
-    await recomputeKnockoutSlots();
   }
+  // Propagación final (ganadores de la última ronda escrita -> F3/Final).
+  await recomputeKnockoutSlots();
   return { updated };
 }

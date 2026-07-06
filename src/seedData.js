@@ -158,12 +158,12 @@ const L = (label, match) => ({ label, src: { match, type: 'loser' } });
 
 export const KNOCKOUT_MATCHES = [
   // Dieciseisavos de Final (ronda 1)
-  { id:'P1', fase:'Dieciseisavos de Final', ronda:1, orden:1, s1:G('2° Grupo A'), s2:G('2° Grupo B'), fecha:'28/06/2026', hora:'15:00', next:'O1' },
-  { id:'P2', fase:'Dieciseisavos de Final', ronda:1, orden:2, s1:G('1° Grupo C'), s2:G('2° Grupo F'), fecha:'28/06/2026', hora:'19:00', next:'O2' },
+  { id:'P1', fase:'Dieciseisavos de Final', ronda:1, orden:1, s1:G('2° Grupo A'), s2:G('2° Grupo B'), fecha:'28/06/2026', hora:'15:00', next:'O2' },
+  { id:'P2', fase:'Dieciseisavos de Final', ronda:1, orden:2, s1:G('1° Grupo C'), s2:G('2° Grupo F'), fecha:'28/06/2026', hora:'19:00', next:'O3' },
   { id:'P3', fase:'Dieciseisavos de Final', ronda:1, orden:3, s1:G('1° Grupo E'), s2:G('3° Grupo A/B/C/D/F'), fecha:'29/06/2026', hora:'15:00', next:'O1' },
-  { id:'P4', fase:'Dieciseisavos de Final', ronda:1, orden:4, s1:G('1° Grupo F'), s2:G('2° Grupo C'), fecha:'29/06/2026', hora:'19:00', next:'O3' },
-  { id:'P5', fase:'Dieciseisavos de Final', ronda:1, orden:5, s1:G('2° Grupo E'), s2:G('2° Grupo I'), fecha:'30/06/2026', hora:'15:00', next:'O2' },
-  { id:'P6', fase:'Dieciseisavos de Final', ronda:1, orden:6, s1:G('1° Grupo I'), s2:G('3° Grupo C/D/F/G/H'), fecha:'30/06/2026', hora:'19:00', next:'O3' },
+  { id:'P4', fase:'Dieciseisavos de Final', ronda:1, orden:4, s1:G('1° Grupo F'), s2:G('2° Grupo C'), fecha:'29/06/2026', hora:'19:00', next:'O2' },
+  { id:'P5', fase:'Dieciseisavos de Final', ronda:1, orden:5, s1:G('2° Grupo E'), s2:G('2° Grupo I'), fecha:'30/06/2026', hora:'15:00', next:'O3' },
+  { id:'P6', fase:'Dieciseisavos de Final', ronda:1, orden:6, s1:G('1° Grupo I'), s2:G('3° Grupo C/D/F/G/H'), fecha:'30/06/2026', hora:'19:00', next:'O1' },
   { id:'P7', fase:'Dieciseisavos de Final', ronda:1, orden:7, s1:G('1° Grupo A'), s2:G('3° Grupo C/E/F/H/I'), fecha:'01/07/2026', hora:'15:00', next:'O4' },
   { id:'P8', fase:'Dieciseisavos de Final', ronda:1, orden:8, s1:G('1° Grupo L'), s2:G('3° Grupo E/H/I/J/K'), fecha:'01/07/2026', hora:'19:00', next:'O4' },
   { id:'P9', fase:'Dieciseisavos de Final', ronda:1, orden:9, s1:G('1° Grupo G'), s2:G('3° Grupo A/E/H/I/J'), fecha:'02/07/2026', hora:'15:00', next:'O6' },
@@ -176,9 +176,9 @@ export const KNOCKOUT_MATCHES = [
   { id:'P16', fase:'Dieciseisavos de Final', ronda:1, orden:16, s1:G('1° Grupo K'), s2:G('3° Grupo D/E/I/J/L'), fecha:'05/07/2026', hora:'17:00', next:'O8' },
 
   // Octavos de Final (ronda 2)
-  { id:'O1', fase:'Octavos de Final', ronda:2, orden:1, s1:W('Ganador P1','P1'), s2:W('Ganador P3','P3'), fecha:'06/07/2026', hora:'16:00', next:'C1' },
-  { id:'O2', fase:'Octavos de Final', ronda:2, orden:2, s1:W('Ganador P2','P2'), s2:W('Ganador P5','P5'), fecha:'06/07/2026', hora:'20:00', next:'C1' },
-  { id:'O3', fase:'Octavos de Final', ronda:2, orden:3, s1:W('Ganador P4','P4'), s2:W('Ganador P6','P6'), fecha:'07/07/2026', hora:'16:00', next:'C2' },
+  { id:'O1', fase:'Octavos de Final', ronda:2, orden:1, s1:W('Ganador P3','P3'), s2:W('Ganador P6','P6'), fecha:'06/07/2026', hora:'16:00', next:'C1' },
+  { id:'O2', fase:'Octavos de Final', ronda:2, orden:2, s1:W('Ganador P1','P1'), s2:W('Ganador P4','P4'), fecha:'06/07/2026', hora:'20:00', next:'C1' },
+  { id:'O3', fase:'Octavos de Final', ronda:2, orden:3, s1:W('Ganador P2','P2'), s2:W('Ganador P5','P5'), fecha:'07/07/2026', hora:'16:00', next:'C2' },
   { id:'O4', fase:'Octavos de Final', ronda:2, orden:4, s1:W('Ganador P7','P7'), s2:W('Ganador P8','P8'), fecha:'07/07/2026', hora:'20:00', next:'C2' },
   { id:'O5', fase:'Octavos de Final', ronda:2, orden:5, s1:W('Ganador P11','P11'), s2:W('Ganador P12','P12'), fecha:'08/07/2026', hora:'16:00', next:'C3' },
   { id:'O6', fase:'Octavos de Final', ronda:2, orden:6, s1:W('Ganador P9','P9'), s2:W('Ganador P10','P10'), fecha:'08/07/2026', hora:'20:00', next:'C3' },
@@ -187,13 +187,13 @@ export const KNOCKOUT_MATCHES = [
 
   // Cuartos de Final (ronda 3)
   { id:'C1', fase:'Cuartos de Final', ronda:3, orden:1, s1:W('Ganador O1','O1'), s2:W('Ganador O2','O2'), fecha:'11/07/2026', hora:'15:00', next:'S1' },
-  { id:'C2', fase:'Cuartos de Final', ronda:3, orden:2, s1:W('Ganador O3','O3'), s2:W('Ganador O4','O4'), fecha:'11/07/2026', hora:'19:00', next:'S1' },
-  { id:'C3', fase:'Cuartos de Final', ronda:3, orden:3, s1:W('Ganador O5','O5'), s2:W('Ganador O6','O6'), fecha:'12/07/2026', hora:'15:00', next:'S2' },
+  { id:'C2', fase:'Cuartos de Final', ronda:3, orden:2, s1:W('Ganador O3','O3'), s2:W('Ganador O4','O4'), fecha:'11/07/2026', hora:'19:00', next:'S2' },
+  { id:'C3', fase:'Cuartos de Final', ronda:3, orden:3, s1:W('Ganador O5','O5'), s2:W('Ganador O6','O6'), fecha:'12/07/2026', hora:'15:00', next:'S1' },
   { id:'C4', fase:'Cuartos de Final', ronda:3, orden:4, s1:W('Ganador O7','O7'), s2:W('Ganador O8','O8'), fecha:'12/07/2026', hora:'19:00', next:'S2' },
 
   // Semifinales (ronda 4) -> ganador a la Final, perdedor al 3er puesto
-  { id:'S1', fase:'Semifinal', ronda:4, orden:1, s1:W('Ganador C1','C1'), s2:W('Ganador C2','C2'), fecha:'15/07/2026', hora:'19:00', next:'Final', nextLoser:'F3' },
-  { id:'S2', fase:'Semifinal', ronda:4, orden:2, s1:W('Ganador C3','C3'), s2:W('Ganador C4','C4'), fecha:'16/07/2026', hora:'19:00', next:'Final', nextLoser:'F3' },
+  { id:'S1', fase:'Semifinal', ronda:4, orden:1, s1:W('Ganador C1','C1'), s2:W('Ganador C3','C3'), fecha:'15/07/2026', hora:'19:00', next:'Final', nextLoser:'F3' },
+  { id:'S2', fase:'Semifinal', ronda:4, orden:2, s1:W('Ganador C2','C2'), s2:W('Ganador C4','C4'), fecha:'16/07/2026', hora:'19:00', next:'Final', nextLoser:'F3' },
 
   // Tercer puesto y Final (ronda 5)
   { id:'F3', fase:'Partido por el Tercer Puesto', ronda:5, orden:1, s1:L('Perdedor S1','S1'), s2:L('Perdedor S2','S2'), fecha:'18/07/2026', hora:'15:00', next:null },

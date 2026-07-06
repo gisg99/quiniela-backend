@@ -9,6 +9,7 @@
     "dev": "node --watch src/index.js",
     "seed": "node src/seed.js",
     "reset": "node src/seed.js --reset",
+    "fix-bracket": "node src/fix_bracket_links.js",
     "probe": "node src/probe_api.js"
   },
   "keywords": ["mundial", "2026", "quiniela", "express", "postgres"],

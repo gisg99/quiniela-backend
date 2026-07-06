@@ -50,6 +50,12 @@ export async function recomputeKnockoutSlots() {
   const updates = [];
 
   for (const m of ordered) {
+    // Un partido YA JUGADO tiene participantes que son un hecho: los fijó
+    // syncKnockout desde el fixture real. La propagación no debe reasignar
+    // sus equipos (si lo hace, los goles reales quedan pegados a la pareja
+    // equivocada). El partido sí se sigue usando como fuente ('winner'/
+    // 'loser') para alimentar la ronda siguiente más abajo.
+    if (m.played) continue;
     for (const slot of [1, 2]) {
       const srcType = m[`slot_${slot}_src_type`];
       const srcMatch = m[`slot_${slot}_src_match`];

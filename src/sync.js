@@ -394,7 +394,13 @@ async function syncKnockout(fixtures) {
       const h = resolve(f.home), a = resolve(f.away);
       if (!h || !a) continue;
       const ids = new Set([h.id, a.id]);
-      let match = inRound.find((m) => (m.team_1_id && ids.has(m.team_1_id)) || (m.team_2_id && ids.has(m.team_2_id)));
+      // 1) Preferimos el slot con la pareja EXACTA (ambos equipos). Así un
+      //    slot que solo comparte un equipo (por una predicción distinta a
+      //    la realidad) no se lleva el marcador de otro cruce.
+      let match = inRound.find((m) => ids.has(m.team_1_id) && ids.has(m.team_2_id));
+      // 2) Si no, un slot que comparta al menos un equipo real.
+      if (!match) match = inRound.find((m) => (m.team_1_id && ids.has(m.team_1_id)) || (m.team_2_id && ids.has(m.team_2_id)));
+      // 3) Si no, un único slot vacío disponible en la ronda.
       if (!match) {
         const empties = inRound.filter((m) => !m.team_1_id && !m.team_2_id);
         if (empties.length === 1) match = empties[0];

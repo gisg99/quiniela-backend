@@ -12,7 +12,7 @@ export const TEAMS = [
   { name: 'República Checa',       bombo: 4, grupo: 'A', pos: 4 },
 
   { name: 'Canadá',                bombo: 1, grupo: 'B', pos: 1 },
-  { name: 'Bosnia y Herzegovina',  bombo: 4, grupo: 'B', pos: 2 },
+  { name: 'Bosnia',                bombo: 4, grupo: 'B', pos: 2 },
   { name: 'Qatar',                 bombo: 3, grupo: 'B', pos: 3 },
   { name: 'Suiza',                 bombo: 2, grupo: 'B', pos: 4 },
 
@@ -73,7 +73,7 @@ export const GROUP_MATCHES = [
   // Jornada 1
   ['G1','A',1,'México','Sudáfrica','11/06/2026','13:00'],
   ['G2','A',1,'Corea del Sur','República Checa','11/06/2026','19:00'],
-  ['G7','B',1,'Canadá','Bosnia y Herzegovina','12/06/2026','13:00'],
+  ['G7','B',1,'Canadá','Bosnia','12/06/2026','13:00'],
   ['G8','B',1,'Qatar','Suiza','12/06/2026','19:00'],
   ['G13','C',1,'Brasil','Marruecos','13/06/2026','13:00'],
   ['G14','C',1,'Haití','Escocia','13/06/2026','19:00'],
@@ -99,7 +99,7 @@ export const GROUP_MATCHES = [
   ['G3','A',2,'México','Corea del Sur','16/06/2026','16:00'],
   ['G4','A',2,'República Checa','Sudáfrica','16/06/2026','21:00'],
   ['G9','B',2,'Canadá','Qatar','17/06/2026','16:00'],
-  ['G10','B',2,'Suiza','Bosnia y Herzegovina','17/06/2026','21:00'],
+  ['G10','B',2,'Suiza','Bosnia','17/06/2026','21:00'],
   ['G15','C',2,'Brasil','Haití','18/06/2026','16:00'],
   ['G16','C',2,'Escocia','Marruecos','18/06/2026','21:00'],
   ['G21','D',2,'Estados Unidos','Australia','19/06/2026','16:00'],
@@ -124,7 +124,7 @@ export const GROUP_MATCHES = [
   ['G5','A',3,'República Checa','México','22/06/2026','16:00'],
   ['G6','A',3,'Sudáfrica','Corea del Sur','22/06/2026','19:00'],
   ['G11','B',3,'Suiza','Canadá','23/06/2026','16:00'],
-  ['G12','B',3,'Bosnia y Herzegovina','Qatar','23/06/2026','19:00'],
+  ['G12','B',3,'Bosnia','Qatar','23/06/2026','19:00'],
   ['G17','C',3,'Escocia','Brasil','24/06/2026','16:00'],
   ['G18','C',3,'Marruecos','Haití','24/06/2026','19:00'],
   ['G23','D',3,'Turquía','Estados Unidos','25/06/2026','16:00'],

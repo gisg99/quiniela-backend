@@ -29,7 +29,7 @@ export const TEAM_ALIASES = {
   'Corea del Sur':        ['South Korea', 'Korea Republic', 'Republic of Korea'],
   'República Checa':      ['Czech Republic', 'Czechia'],
   'Canadá':               ['Canada'],
-  'Bosnia y Herzegovina': ['Bosnia and Herzegovina', 'Bosnia & Herzegovina', 'Bosnia'],
+  'Bosnia':               ['Bosnia and Herzegovina', 'Bosnia & Herzegovina', 'Bosnia y Herzegovina'],
   'Qatar':                ['Qatar'],
   'Suiza':                ['Switzerland'],
   'Brasil':               ['Brazil'],
